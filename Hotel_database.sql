@@ -57,6 +57,12 @@ Record_ID VARCHAR(5) PRIMARY KEY,
 Booking VARCHAR(100),
 Renting VARCHAR(100));
 
+CREATE TABLE customer(
+Customer_ID INT PRIMARY KEY,
+Full_Name VARCHAR(100) NOT NULL,
+Address VARCHAR(200) NOT NULL,
+SIN NUMERIC(9) NOT NULL);
+
 ------------------------------
 SELECT * FROM hotelchain;
 SELECT * FROM hotel;
