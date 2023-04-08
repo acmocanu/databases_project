@@ -50,12 +50,13 @@ CREATE TABLE renting(
 Renting_ID VARCHAR(5) PRIMARY KEY,
 Check_In DATE NOT NULL,
 Check_Out DATE NOT NULL,
-Payment INT NOT NULL);
+Amount INT NOT NULL);
 
 CREATE TABLE archive(
 Record_ID VARCHAR(5) PRIMARY KEY,
-Booking VARCHAR(100),
-Renting VARCHAR(100));
+Check_In DATE NOT NULL,
+Check_Out DATE NOT NULL,
+Amount INT NOT NULL);
 
 CREATE TABLE customer(
 Customer_ID INT PRIMARY KEY,
