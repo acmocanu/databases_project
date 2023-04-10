@@ -42,20 +42,20 @@ REFERENCES hotel(Hotel_ID));
 
 CREATE TABLE booking(
 Booking_ID VARCHAR(5) PRIMARY KEY,
-Check_In DATE NOT NULL,
-Check_Out DATE NOT NULL,
+Check_In VARCHAR(10) NOT NULL,
+Check_Out VARCHAR(10) NOT NULL,
 Amount INT NOT NULL);
 
 CREATE TABLE renting(
 Renting_ID VARCHAR(5) PRIMARY KEY,
-Check_In DATE NOT NULL,
-Check_Out DATE NOT NULL,
+Check_In VARCHAR(10) NOT NULL,
+Check_Out VARCHAR(10) NOT NULL,
 Amount INT NOT NULL);
 
 CREATE TABLE archive(
 Record_ID VARCHAR(5) PRIMARY KEY,
-Check_In DATE NOT NULL,
-Check_Out DATE NOT NULL,
+Check_In VARCHAR(10) NOT NULL,
+Check_Out VARCHAR(10) NOT NULL,
 Amount INT NOT NULL);
 
 CREATE TABLE customer(
@@ -68,8 +68,109 @@ SIN NUMERIC(9) NOT NULL);
 SELECT * FROM hotelchain;
 SELECT * FROM hotel;
 SELECT * FROM room;
+SELECT * FROM employee;
+SELECT * FROM customer;
+SELECT * FROM booking;
 
 -------------------------------------------------
+-- SQL trigger that logs the insertions, updates, and deletions to the employee table:
+CREATE TRIGGER employee_trigger
+AFTER INSERT, UPDATE, DELETE
+ON employee
+FOR EACH ROW
+BEGIN
+    IF (INSERTING) THEN
+        INSERT INTO employee_log(action, employee_id, SIN, employee_name, address, position, manages_hotel, hotel_id)
+        VALUES ('INSERT', NEW.Employee_ID, NEW.SIN, NEW.Employee_Name, NEW.Address, NEW.Position, NEW.Manages_Hotel, NEW.Hotel_ID);
+    ELSEIF (UPDATING) THEN
+        INSERT INTO employee_log(action, employee_id, SIN, employee_name, address, position, manages_hotel, hotel_id)
+        VALUES ('UPDATE', NEW.Employee_ID, NEW.SIN, NEW.Employee_Name, NEW.Address, NEW.Position, NEW.Manages_Hotel, NEW.Hotel_ID);
+    ELSEIF (DELETING) THEN
+        INSERT INTO employee_log(action, employee_id, SIN, employee_name, address, position, manages_hotel, hotel_id)
+        VALUES ('DELETE', OLD.Employee_ID, OLD.SIN, OLD.Employee_Name, OLD.Address, OLD.Position, OLD.Manages_Hotel, OLD.Hotel_ID);
+    END IF;
+END;
+-- This trigger logs each insertion, update, and deletion to a separate employee_log table, which should have the same columns as the employee table, plus an additional action column to indicate the type of change. 
+-- The trigger checks whether the operation is an insertion, update, or deletion using the INSERTING, UPDATING, and DELETING keywords, respectively. It then inserts a row into the employee_log table with the appropriate values.
+
+-- SQL statement to create an index on the Hotel_ID column of the employee table:
+CREATE INDEX employee_hotel_idx ON employee (Hotel_ID);
+-- This statement creates index named employee_hotel_idx on the Hotel_ID column of the employee table. Indexes can improve the performance of queries that filter, join, or sort data based on the indexed column(s).
+
+-- SQL trigger that logs the insertions, updates, and deletions to the customer table:
+CREATE TRIGGER customer_update_trigger
+AFTER UPDATE ON customer
+FOR EACH ROW
+BEGIN
+    INSERT INTO customer_log (Customer_ID, Action_Performed)
+    VALUES (OLD.Customer_ID, CONCAT('Customer updated: Full Name=', OLD.Full_Name, ', Address=', OLD.Address, ', SIN=', OLD.SIN));
+END;
+-- This trigger fires after an update is made to the customer table and inserts a new row into a separate customer_log table. The OLD keyword is used to refer to the old values of the row that was updated. 
+-- The trigger logs the customer ID and the action performed (in this case, an update with the customer's previous full name, address, and SIN). 
+
+-- SQL statement to create an index on the Full_Name column of the customer table:
+CREATE INDEX idx_customer_name ON customer (Full_Name);
+-- This statement creates an index called idx_customer_name on the Full_Name column of the customer table. Indexes are used to speed up queries by allowing the database to find the relevant rows more quickly. 
+-- In this case, the index will speed up queries that involve searching for customers by their full name.
+
+-- Trigger for the booking table that calculates the total amount for each booking and updates the Amount column whenever a row is inserted or updated:
+CREATE TRIGGER update_booking_amount
+AFTER INSERT, UPDATE ON booking
+FOR EACH ROW
+BEGIN
+    DECLARE total_amount INT;
+    SET total_amount = DATEDIFF(NEW.Check_Out, NEW.Check_In) * 100;
+    SET NEW.Amount = total_amount;
+END;
+-- This trigger uses the DATEDIFF function to calculate the number of nights between the check-in and check-out dates of a booking and multiplies it by 100 to get the total amount. It then sets the Amount column of the inserted or updated row to this calculated value.
+-- Trigger assumes that the Check_In and Check_Out columns are stored as VARCHAR values in the format "yyyy-mm-dd". If they are stored as DATE values instead, you can use the DATEDIFF function directly on the columns without converting them.
+
+-- Index on the booking table in SQL on Booking_ID column:
+CREATE INDEX booking_id_index ON booking (Booking_ID);
+-- This statement creates an index called booking_id_index on the Booking_ID column of the booking table.
+
+-- Trigger to update the number of rooms in the hotel table after an insert or delete in the Room table
+CREATE TRIGGER update_num_rooms
+AFTER INSERT ON Room
+FOR EACH ROW
+BEGIN
+    UPDATE hotel
+    SET Num_Rooms = Num_Rooms + 1
+    WHERE Hotel_ID = NEW.Hotel_ID;
+END;
+
+CREATE TRIGGER decrease_num_rooms
+AFTER DELETE ON Room
+FOR EACH ROW
+BEGIN
+    UPDATE hotel
+    SET Num_Rooms = Num_Rooms - 1
+    WHERE Hotel_ID = OLD.Hotel_ID;
+END;
+
+-- Trigger to prevent the deletion of a hotel that has rooms associated with it
+CREATE TRIGGER prevent_hotel_deletion
+BEFORE DELETE ON hotel
+FOR EACH ROW
+BEGIN
+    DECLARE num_rooms INT;
+    SELECT COUNT(*) INTO num_rooms
+    FROM Room
+    WHERE Hotel_ID = OLD.Hotel_ID;
+
+    IF num_rooms > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Cannot delete hotel with associated rooms.';
+    END IF;
+END;
+
+-- Index on the Stars column of the hotel table. This index will allow for faster queries that involve selecting hotels based on their star rating.
+CREATE INDEX idx_hotel_stars ON hotel (Stars);
+
+-- Index on the Price column of the Room table. This index will allow for faster queries that involve selecting rooms based on their price.
+CREATE INDEX idx_room_price ON Room (Price);
+
+-----------------------------------------------------------------------------------------------------------------
 INSERT INTO hotelchain
 VALUES
 ('Best Western Hotels', 'Phoenix', 'AZ', 8, 'bestwestern_central@bestwestern.com', 6023339977),
