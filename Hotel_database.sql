@@ -170,6 +170,21 @@ CREATE INDEX idx_hotel_stars ON hotel (Stars);
 -- Index on the Price column of the Room table. This index will allow for faster queries that involve selecting rooms based on their price.
 CREATE INDEX idx_room_price ON Room (Price);
 
+-- Index on the "City" column of the "hotel" table. This index would be useful if your application frequently queries hotels by city. It would speed up queries that include a "WHERE" clause that filters on the "City" column.
+CREATE INDEX idx_hotel_city ON hotel (City);
+
+-- View 1: Number of available rooms per area
+CREATE VIEW available_rooms_per_area AS
+SELECT City, State, SUM(Num_Rooms) AS Total_Rooms, COUNT(Room_ID) AS Available_Rooms
+FROM hotel LEFT JOIN Room ON hotel.Hotel_ID = Room.Hotel_ID
+GROUP BY City, State;
+
+-- View 2: Capacity of all rooms of a specific hotel
+CREATE VIEW room_capacity_by_hotel AS
+SELECT Hotel_Name, SUM(Capacity) AS Total_Capacity
+FROM hotel INNER JOIN Room ON hotel.Hotel_ID = Room.Hotel_ID
+GROUP BY Hotel_Name;
+
 -----------------------------------------------------------------------------------------------------------------
 INSERT INTO hotelchain
 VALUES
